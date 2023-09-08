@@ -1,24 +1,59 @@
+import dotenv from "dotenv"
 import ClockData from "./data/ClockData.js"
+import express from "express"
+import cors from "cors"
 
-/** @type {import("./data/ClockData.js").SiteClocks} */
-const tempData = {
-    id: "e3647b84-d25f-4dee-a0cc-dcfcd3f1b5bb",
-    name: "bunchofbull.net",
-    clockGroups: [{
-        id: "91f661a8-d4fa-4e6f-a5e9-2f260bf85899",
-        title: "Blamo",
-        clocks: [{
-            id: "35f1589b-ab3e-4417-b2d7-29d63acca2f7",
-            title: "Clock",
-            totalSegments: 8,
-            filledSegments: 4
-        }]
-    }]
-}
+dotenv.config()
+const PORT = process.env.PORT
+const app = express()
+const clients = []
+app.use(cors())
+app.use(express.json())
+app.use((req, res, next) => {
+    if (req.method == "POST" && req.originalUrl == "/data") {
+        let auth = req.get("X-Auth-Header")
+        if (auth != process.env.PASSWORD) {
+            return res.status(401).send('Unauthorized!')
+        }
+    }
+    next()
+})
 
-let cd = await (new ClockData()).checkForTables()
-await cd.insert(tempData)
+app.get("/data/:key", async (req, res) => {
+    const key = req.params.key
+    const db = new ClockData()
+    let data = await db.get(key)
+    res.json(data)
+    await db.close()
+})
+app.post("/data", async (req, res) => {
+    /** @type {import("./data/ClockData.js").SiteClocks} */
+    let data = req.body
+    if (!data.id) { res.statusCode = 400; return res }
+    const db = new ClockData()
+    await db.checkForTables()
+    await db.insert(data)
+    await db.close()
+    for (const client of clients) { client.write(JSON.stringify(data)) }
+    res.send("")
+})
+app.get("/events/:key", async (req, res) => {
+    const key = req.params.key
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.flushHeaders()
+    clients.push(res)
+    const db = new ClockData()
+    let data = await db.get(key)
+    res.write(JSON.stringify(data))
+    await db.close()
+    req.on('close', () => {
+        clients.splice(clients.indexOf(res), 1)
+    })
+})
+app.get("/check", (req, res) => { res.send(1) })
 
-let site = await cd.get("e3647b84-d25f-4dee-a0cc-dcfcd3f1b5bb")
-console.log(JSON.stringify(site))
-await cd.crud.close()
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`)
+})

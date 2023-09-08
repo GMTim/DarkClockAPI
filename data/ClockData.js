@@ -142,7 +142,7 @@ class ClockData {
                     title: group.title
                 })
             } else if (group.title != dbGroup.title) {
-                await this.crud.update(Tables.siteClocks, {
+                await this.crud.update(Tables.clockGroups, {
                     title: group.title
                 }, {
                     id: group.id
@@ -185,6 +185,9 @@ class ClockData {
                 }
             }
         }
+    }
+    close() {
+        this.crud.close()
     }
 }
 
