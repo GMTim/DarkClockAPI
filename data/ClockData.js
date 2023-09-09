@@ -72,11 +72,27 @@ class ClockData {
     }
     /** @param {SiteClocks} data */
     async insert(data) {
+        data = this.sanitizeIds(data)
         await this.crud.beginTransaction()
         await this.insertSite(data)
         await this.insertGroups(data)
         await this.insertClocks(data)
         await this.crud.commitTransaction()
+    }
+    /**
+     * @private
+     * @param {SiteClocks} data
+     * @returns {SiteClocks}
+     */
+    sanitizeIds(data) {
+        data.id = data.id.toLowerCase()
+        for (const gi in data.clockGroups) {
+            data.clockGroups[gi].id = data.clockGroups[gi].id.toLowerCase()
+            for (const ci in data.clockGroups[gi].clocks) {
+                data.clockGroups[gi].clocks[ci].id = data.clockGroups[gi].clocks[ci].id.toLowerCase()
+            }
+        }
+        return data
     }
     /** 
      * @private
