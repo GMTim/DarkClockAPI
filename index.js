@@ -22,6 +22,7 @@ app.use((req, res, next) => {
 app.get("/data/:key", async (req, res) => {
     const key = req.params.key
     const db = new ClockData()
+    await db.checkForTables()
     let data = await db.get(key)
     res.json(data)
     await db.close()
@@ -34,7 +35,7 @@ app.post("/data", async (req, res) => {
     await db.checkForTables()
     await db.insert(data)
     await db.close()
-    for (const client of clients) { client.write(JSON.stringify(data)) }
+    for (const client of clients) { client.write(`data: ${JSON.stringify(data)}\n\n`) }
     res.send("")
 })
 app.get("/events/:key", async (req, res) => {
@@ -45,8 +46,9 @@ app.get("/events/:key", async (req, res) => {
     res.flushHeaders()
     clients.push(res)
     const db = new ClockData()
+    await db.checkForTables()
     let data = await db.get(key)
-    res.write(JSON.stringify(data))
+    res.write(`data: ${JSON.stringify(data)}\n\n`)
     await db.close()
     req.on('close', () => {
         clients.splice(clients.indexOf(res), 1)
