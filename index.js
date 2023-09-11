@@ -6,11 +6,11 @@ import cors from "cors"
 dotenv.config()
 const PORT = process.env.PORT
 const app = express()
-const clients = []
+const clients = {}
 app.use(cors())
 app.use(express.json())
 app.use((req, res, next) => {
-    if (req.method == "POST" && req.originalUrl == "/data") {
+    if (req.method == "POST" && (req.originalUrl.endsWith("data") || req.originalUrl.endsWith("delete"))) {
         let auth = req.get("X-Auth-Header")
         if (auth != process.env.PASSWORD) {
             return res.status(401).send('Unauthorized!')
@@ -45,7 +45,7 @@ app.get("/data", async (req, res) => {
     await db.close()
 })
 app.get("/data/:key", async (req, res) => {
-    const key = req.params.key
+    const key = req.params.key.toLowerCase()
     const db = new ClockData()
     let data = await db.get(key)
     res.json(data)
@@ -57,23 +57,39 @@ app.post("/data", async (req, res) => {
     if (!data.id) { res.statusCode = 400; return res }
     const db = new ClockData()
     await db.insert(data)
+    data = await db.get(data.id)
     await db.close()
-    for (const client of clients) { client.write(`data: ${JSON.stringify(data)}\n\n`) }
+    if (clients[data.id.toLowerCase()]) {
+        for (const client of clients[data.id.toLowerCase()]) { client.write(`data: ${JSON.stringify(data)}\n\n`) }
+    }
+    res.send("")
+})
+app.post("/delete", async (req, res) => {
+    /** @type {import("./data/ClockData.js").SiteClocks} */
+    let data = req.body
+    if (!data.id) { res.statusCode = 400; return res }
+    const db = new ClockData()
+    await db.deleteSite(data.id)
+    await db.close()
+    if (clients[data.id.toLowerCase()]) {
+        for (const client of clients[data.id.toLowerCase()]) { client.destroy() }
+    }
     res.send("")
 })
 app.get("/events/:key", async (req, res) => {
-    const key = req.params.key
+    const key = req.params.key.toLowerCase()
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
     res.setHeader('Connection', 'keep-alive')
     res.flushHeaders()
-    clients.push(res)
+    clients[key] = clients[key] ?? []
+    clients[key].push(res)
     const db = new ClockData()
     let data = await db.get(key)
     res.write(`data: ${JSON.stringify(data)}\n\n`)
     await db.close()
     req.on('close', () => {
-        clients.splice(clients.indexOf(res), 1)
+        clients[key].splice(clients[key].indexOf(res), 1)
     })
 })
 app.get("/check", (req, res) => { res.send(1) })

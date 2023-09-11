@@ -213,8 +213,22 @@ class ClockData {
             }
         }
     }
-    close() {
-        this.crud.close()
+    /** @param {number} */
+    async deleteSite(site) {
+        let sites = await this.getSites()
+        if (sites.filter(s => s.id == site).length == 0) { return }
+        let groups = await this.getClockGroups({id: site})
+        for (const group of groups) {
+            let clocks = await this.getClocks(group)
+            for (const clock of clocks) {
+                await this.crud.delete(Tables.clocks, {id: clock.id})
+            }
+            await this.crud.delete(Tables.clockGroups, {id: group.id})
+        }
+        await this.crud.delete(Tables.siteClocks, {id: site})
+    }
+    async close() {
+        await this.crud.close()
     }
 }
 
