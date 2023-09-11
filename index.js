@@ -18,11 +18,35 @@ app.use((req, res, next) => {
     }
     next()
 })
+app.use(async (req, res, next) => {
+    const db = new ClockData()
+    await db.checkForTables()
+    await db.close()
+    next()
+})
+app.use(async (req, res, next) => {
+    if (req.url.endsWith("data")) { return next(); }
+    const key = req.params.key
+    if (req.method == "GET") {
+        const db = new ClockData()
+        let sites = await db.getSites()
+        await db.close()
+        if (sites.filter(s => req.url.endsWith(s.id)).length == 0) {
+            return res.status(400).send('Missing Key')
+        }
+    }
+    next()
+})
 
+app.get("/data", async (req, res) => {
+    const db = new ClockData()
+    const sites = await db.getSites()
+    res.json(sites)
+    await db.close()
+})
 app.get("/data/:key", async (req, res) => {
     const key = req.params.key
     const db = new ClockData()
-    await db.checkForTables()
     let data = await db.get(key)
     res.json(data)
     await db.close()
@@ -32,7 +56,6 @@ app.post("/data", async (req, res) => {
     let data = req.body
     if (!data.id) { res.statusCode = 400; return res }
     const db = new ClockData()
-    await db.checkForTables()
     await db.insert(data)
     await db.close()
     for (const client of clients) { client.write(`data: ${JSON.stringify(data)}\n\n`) }
@@ -46,7 +69,6 @@ app.get("/events/:key", async (req, res) => {
     res.flushHeaders()
     clients.push(res)
     const db = new ClockData()
-    await db.checkForTables()
     let data = await db.get(key)
     res.write(`data: ${JSON.stringify(data)}\n\n`)
     await db.close()

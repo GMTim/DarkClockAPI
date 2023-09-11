@@ -125,6 +125,25 @@ class SQLiteCRUD {
             });
         });
     }
+    /**
+     * Ensures a column exists in a table. If the column doesn't exist, it will be added.
+     * If defaultData is provided, the new column will be populated with this default value.
+     * 
+     * @param {string} tableName - The name of the table.
+     * @param {string} columnName - The name of the column to ensure.
+     * @param {string} [columnType='TEXT'] - The data type of the column.
+     * @param {any} [defaultData=null] - Default data to populate the new column with.
+     * @returns {Promise<void>}
+     */
+    async ensureColumnExists(tableName, columnName, columnType = 'TEXT', defaultData = null) {
+        /** @type {any[]} */
+        let check = await this.db.all(`PRAGMA table_info(${tableName})`)
+        if (check.filter(r => r.name == columnName).length > 0) { return }
+        await this.db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`)
+        if (defaultData !== null) {
+            await this.db.run(`UPDATE ${tableName} SET ${columnName} = ?`, [defaultData])
+        }
+    }
 }
 
 export default SQLiteCRUD

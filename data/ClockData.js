@@ -22,6 +22,7 @@ import SQLiteCRUD from "./SqliteCRUD.js"
  * @property {string} title - The title or name of the data.
  * @property {number} totalSegments - The total number of segments.
  * @property {number} filledSegments - The number of filled segments.
+ * @property {string} color
  */
 
 const Tables = {
@@ -37,26 +38,33 @@ class ClockData {
     /** @returns {Promise<ClockData>} */
     async checkForTables() {
         try {
-            this.crud.createTable("SiteClocks", {
+            await this.crud.createTable("SiteClocks", {
                 id: 'TEXT PRIMARY KEY',
                 name: 'TEXT NOT NULL'
             })
-            this.crud.createTable("ClockGroups", {
+            await this.crud.createTable("ClockGroups", {
                 id: 'TEXT PRIMARY KEY',
                 website_id: 'TEXT',
                 title: 'TEXT NOT NULL'
             })
-            this.crud.createTable("Clocks", {
+            await this.crud.createTable("Clocks", {
                 id: 'TEXT PRIMARY KEY',
                 group_id: 'TEXT',
                 title: 'TEXT NOT NULL',
                 totalSegments: 'INTEGER',
-                filledSegments: 'INTEGER'
+                filledSegments: 'INTEGER',
+                color: 'TEXT'
             })
+            await this.crud.ensureColumnExists("Clocks", "color", "TEXT", "green")
         } catch (error) {
             console.log(error)
         }
         return this
+    }
+    /** @returns {SiteClocks[]} */
+    async getSites() {
+        const sites = await this.crud.select(Tables.siteClocks)
+        return sites
     }
     /** @returns {SiteClocks}  */
     async get(site_id) {
@@ -186,15 +194,18 @@ class ClockData {
                         group_id: clock.group_id,
                         title: clock.title,
                         totalSegments: clock.totalSegments,
-                        filledSegments: clock.filledSegments
+                        filledSegments: clock.filledSegments,
+                        color: clock.color
                     })
                 } else if (clock.title != dbClock.title ||
                     clock.filledSegments != dbClock.filledSegments ||
-                    clock.totalSegments != dbClock.totalSegments) {
+                    clock.totalSegments != dbClock.totalSegments ||
+                    clock.color != dbClock.color) {
                     await this.crud.update(Tables.clocks, {
                         title: clock.title,
                         totalSegments: clock.totalSegments,
-                        filledSegments: clock.filledSegments
+                        filledSegments: clock.filledSegments,
+                        color: clock.color
                     }, {
                         id: clock.id
                     })
