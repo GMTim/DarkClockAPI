@@ -69,7 +69,7 @@ app.post("/delete", async (req, res) => {
     let data = req.body
     if (!data.id) { res.statusCode = 400; return res }
     const db = new ClockData()
-    await db.deleteSite(data.id)
+    await db.deleteSite(data.id.toLowerCase())
     await db.close()
     if (clients[data.id.toLowerCase()]) {
         for (const client of clients[data.id.toLowerCase()]) { client.destroy() }
