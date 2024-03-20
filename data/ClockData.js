@@ -33,7 +33,7 @@ const Tables = {
 
 class ClockData {
     constructor() {
-        this.crud = new SQLiteCRUD("./data/clockdata.sqlite")
+        this.crud = new SQLiteCRUD("./data/db/clockdata.sqlite")
     }
     /** @returns {Promise<ClockData>} */
     async checkForTables() {

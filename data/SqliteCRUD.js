@@ -1,6 +1,18 @@
 // const sqlite3 = require('sqlite3')
 import sqlite3 from 'sqlite3'
 import { promisify } from 'util'
+import fs from 'fs'
+import path from 'path'
+
+function createDirectoryIfNotExistsSync(file) {
+    const dir = path.dirname(file)
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Directory ${dir} is created`);
+    } else {
+        console.log(`Directory ${dir} already exists`);
+    }
+}
 
 /**
  * A class to handle CRUD operations for SQLite.
@@ -11,6 +23,7 @@ class SQLiteCRUD {
      * @param {string} databasePath - The path to the SQLite database file.
      */
     constructor(databasePath) {
+        createDirectoryIfNotExistsSync(databasePath)
         this.db = new sqlite3.Database(databasePath);
         this.db.run = promisify(this.db.run);
         this.db.get = promisify(this.db.get);
